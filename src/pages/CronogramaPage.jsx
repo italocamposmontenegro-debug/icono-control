@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatDateOnly, parseDateOnly } from '../utils/date';
 
 const STATUS_COLORS = { pendiente:'#eab308', en_curso:'#3b82f6', finalizado:'#22c55e', retrasado:'#ef4444', suspendido:'#6b7280' };
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
@@ -36,7 +37,11 @@ export default function CronogramaPage() {
   });
 
   // Calculate timeline range
-  const dates = filtered.flatMap(a => [new Date(a.start_date), a.end_date ? new Date(a.end_date) : new Date(a.start_date)]);
+  const dates = filtered.flatMap(a => {
+    const start = parseDateOnly(a.start_date);
+    const end = a.end_date ? parseDateOnly(a.end_date) : parseDateOnly(a.start_date);
+    return start && end ? [start, end] : [];
+  });
   const minDate = dates.length ? new Date(Math.min(...dates)) : new Date();
   const maxDate = dates.length ? new Date(Math.max(...dates)) : new Date();
   const totalDays = Math.max(Math.ceil((maxDate - minDate) / 86400000), 30);
@@ -45,7 +50,7 @@ export default function CronogramaPage() {
   const months = [];
   const mStart = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
   while (mStart <= maxDate) {
-    months.push({ label: mStart.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}), offset: Math.max(0, (mStart - minDate) / 86400000 / totalDays * 100) });
+    months.push({ label: formatDateOnly(mStart, { month:'short', year:'2-digit' }), offset: Math.max(0, (mStart - minDate) / 86400000 / totalDays * 100) });
     mStart.setMonth(mStart.getMonth() + 1);
   }
 
@@ -94,8 +99,8 @@ export default function CronogramaPage() {
           {/* Gantt rows */}
           <div style={{display:'flex',flexDirection:'column',gap:6,minWidth:600}}>
             {filtered.map(a => {
-              const start = new Date(a.start_date);
-              const end = a.end_date ? new Date(a.end_date) : new Date(start.getTime() + 7*86400000);
+              const start = parseDateOnly(a.start_date);
+              const end = a.end_date ? parseDateOnly(a.end_date) : new Date(start.getTime() + 7 * 86400000);
               const left = ((start - minDate) / 86400000 / totalDays) * 100;
               const width = Math.max(((end - start) / 86400000 / totalDays) * 100, 2);
 

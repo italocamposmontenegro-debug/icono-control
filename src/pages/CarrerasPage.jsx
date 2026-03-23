@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, X, Save, GraduationCap } from 'lucide-react';
 
@@ -9,13 +11,13 @@ export default function CarrerasPage() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name:'', code:'', description:'', active:true });
 
-  useEffect(() => { load(); }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
     const { data } = await supabase.from('careers').select('*').order('name');
     setCareers(data || []);
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   function openEdit(c) {
     setEditId(c.id);
@@ -37,13 +39,13 @@ export default function CarrerasPage() {
       await supabase.from('careers').insert(form);
     }
     setShowForm(false);
-    load();
+    void load();
   }
 
   async function handleDelete(id) {
     if (!confirm('¿Eliminar esta carrera?')) return;
     await supabase.from('careers').delete().eq('id', id);
-    load();
+    void load();
   }
 
   if (loading) return <div className="page-content"><div className="skeleton skeleton-card" style={{height:300}} /></div>;

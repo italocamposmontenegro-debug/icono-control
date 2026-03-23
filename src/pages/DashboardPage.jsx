@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,6 +9,7 @@ import {
   Activity, ClipboardList, CheckCircle2, Clock, AlertTriangle,
   FileImage, GraduationCap, TrendingUp, ArrowRight
 } from 'lucide-react';
+import { formatDateOnly } from '../utils/date';
 
 const STATUS_COLORS = {
   pendiente: '#eab308', en_curso: '#3b82f6',
@@ -21,7 +21,6 @@ const STATUS_LABELS = {
 };
 
 export default function DashboardPage() {
-  const { profile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [careers, setCareers] = useState([]);
   const [evidence, setEvidence] = useState([]);
@@ -34,7 +33,7 @@ export default function DashboardPage() {
       const [aRes, cRes, eRes, oRes, tRes] = await Promise.all([
         supabase.from('activities').select('*, careers(name, code), objectives(title)'),
         supabase.from('careers').select('*').eq('active', true),
-        supabase.from('evidence').select('id'),
+        supabase.from('evidence').select('id, activity_id'),
         supabase.from('objectives').select('*').eq('active', true).order('order_index'),
         supabase.from('timeline_events').select('*').order('event_date', { ascending: false }).limit(5),
       ]);
@@ -305,7 +304,7 @@ export default function DashboardPage() {
                 {timeline.map(t => (
                   <div key={t.id} className="timeline-mini">
                     <span className="timeline-mini-date">
-                      {new Date(t.event_date).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}
+                      {formatDateOnly(t.event_date, { day:'numeric', month:'short' })}
                     </span>
                     <span className="timeline-mini-title">{t.title}</span>
                   </div>

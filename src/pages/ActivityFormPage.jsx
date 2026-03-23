@@ -25,6 +25,7 @@ export default function ActivityFormPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -40,6 +41,13 @@ export default function ActivityFormPage() {
       if (isEdit) {
         const { data } = await supabase.from('activities').select('*').eq('id', id).single();
         if (data) {
+          if (!isAdmin && profile?.role === 'responsable_carrera' && data.career_id !== profile?.career_id) {
+            setBlocked(true);
+            setError('No tienes permisos para editar actividades de otra carrera.');
+            setLoading(false);
+            return;
+          }
+
           setForm({
             title: data.title || '',
             description: data.description || '',
@@ -60,12 +68,13 @@ export default function ActivityFormPage() {
       setLoading(false);
     }
     load();
-  }, [id]);
+  }, [id, isAdmin, isEdit, profile?.career_id, profile?.role]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (blocked) return;
     setError('');
     setSaving(true);
 
@@ -130,6 +139,11 @@ export default function ActivityFormPage() {
       </div>
 
       <div className="card" style={{maxWidth:800}}>
+        {blocked ? (
+          <div className="empty-state">
+            <p>{error}</p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} style={{display:'flex', flexDirection:'column', gap:'var(--space-md)'}}>
           {error && <div className="login-error">{error}</div>}
 
@@ -223,6 +237,7 @@ export default function ActivityFormPage() {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

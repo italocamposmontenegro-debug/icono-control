@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Edit, X, Save, Users } from 'lucide-react';
 
@@ -12,9 +14,7 @@ export default function UsuariosPage() {
   const [editProfile, setEditProfile] = useState(null);
   const [form, setForm] = useState({ full_name:'', role:'visualizador', career_id:'', active:true });
 
-  useEffect(() => { load(); }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
     const [pRes, cRes] = await Promise.all([
       supabase.from('profiles').select('*, careers(name)').order('created_at', { ascending: false }),
       supabase.from('careers').select('*').eq('active',true).order('name'),
@@ -22,7 +22,9 @@ export default function UsuariosPage() {
     setProfiles(pRes.data || []);
     setCareers(cRes.data || []);
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   function openEdit(p) {
     setEditProfile(p);
@@ -38,7 +40,7 @@ export default function UsuariosPage() {
       active: form.active,
     }).eq('id', editProfile.id);
     setEditProfile(null);
-    load();
+    void load();
   }
 
   if (loading) return <div className="page-content"><div className="skeleton skeleton-card" style={{height:300}} /></div>;

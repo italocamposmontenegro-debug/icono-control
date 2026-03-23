@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BarChart3, Download, FileText } from 'lucide-react';
+import { getTodayDateInputValue } from '../utils/date';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
 const PRIORITY_LABELS = { baja:'Baja', media:'Media', alta:'Alta', critica:'Crítica' };
@@ -58,7 +59,7 @@ export default function ReportesPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `icono_control_reporte_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `icono_control_reporte_${getTodayDateInputValue()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };

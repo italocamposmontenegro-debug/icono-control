@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, ClipboardList } from 'lucide-react';
+import { formatDateOnly } from '../utils/date';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
 const PRIORITY_LABELS = { baja:'Baja', media:'Media', alta:'Alta', critica:'Crítica' };
 
 export default function ActivitiesPage() {
-  const { canEdit, isAdmin, profile } = useAuth();
+  const { canEdit } = useAuth();
   const [activities, setActivities] = useState([]);
   const [careers, setCareers] = useState([]);
   const [objectives, setObjectives] = useState([]);
@@ -131,9 +132,9 @@ export default function ActivitiesPage() {
                   </td>
                   <td>
                     <span style={{fontSize:'0.75rem',color:'var(--color-text-muted)',whiteSpace:'nowrap'}}>
-                      {a.start_date ? new Date(a.start_date).toLocaleDateString('es-CL',{day:'2-digit',month:'short'}) : '—'}
+                      {formatDateOnly(a.start_date, { day:'2-digit', month:'short' })}
                       {' → '}
-                      {a.end_date ? new Date(a.end_date).toLocaleDateString('es-CL',{day:'2-digit',month:'short'}) : '—'}
+                      {formatDateOnly(a.end_date, { day:'2-digit', month:'short' })}
                     </span>
                   </td>
                 </tr>

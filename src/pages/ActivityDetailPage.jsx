@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDateOnly, formatDateTime, getTodayDateInputValue } from '../utils/date';
 import {
   ArrowLeft, Edit, Trash2, Plus, FileImage, CheckCircle2,
-  Clock, AlertTriangle, Calendar, User, ClipboardList
+  Clock
 } from 'lucide-react';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
@@ -14,7 +17,7 @@ const EVIDENCE_TYPES = { registro_fotografico:'Registro Fotográfico', acta:'Act
 export default function ActivityDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { canEdit, isAdmin, profile } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const [activity, setActivity] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [evidenceList, setEvidenceList] = useState([]);
@@ -29,9 +32,7 @@ export default function ActivityDetailPage() {
 
   const canEditThis = isAdmin || (profile?.role === 'responsable_carrera' && activity?.career_id === profile?.career_id);
 
-  useEffect(() => { load(); }, [id]);
-
-  async function load() {
+  const load = useCallback(async () => {
     const [aRes, tRes, eRes, uRes] = await Promise.all([
       supabase.from('activities').select('*, careers(name,code), objectives(title), profiles!activities_responsible_profile_id_fkey(full_name,email)').eq('id', id).single(),
       supabase.from('tasks').select('*, profiles!tasks_assigned_to_profile_id_fkey(full_name)').eq('activity_id', id).order('created_at'),
@@ -43,7 +44,9 @@ export default function ActivityDetailPage() {
     setEvidenceList(eRes.data || []);
     setUpdates(uRes.data || []);
     setLoading(false);
-  }
+  }, [id]);
+
+  useEffect(() => { void load(); }, [load]);
 
   async function handleDelete() {
     if (!confirm('¿Eliminar esta actividad y todos sus datos asociados?')) return;
@@ -56,18 +59,18 @@ export default function ActivityDetailPage() {
     await supabase.from('tasks').insert({ ...taskForm, activity_id: id });
     setShowTaskForm(false);
     setTaskForm({ title:'', description:'', due_date:'', status:'pendiente' });
-    load();
+    void load();
   }
 
   async function toggleTask(task) {
     const newStatus = task.status === 'finalizado' ? 'pendiente' : 'finalizado';
     await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
-    load();
+    void load();
   }
 
   async function deleteTask(taskId) {
     await supabase.from('tasks').delete().eq('id', taskId);
-    load();
+    void load();
   }
 
   async function uploadEvidence(e) {
@@ -80,13 +83,13 @@ export default function ActivityDetailPage() {
     if (upErr) { alert('Error subiendo archivo: ' + upErr.message); setUploading(false); return; }
     await supabase.from('evidence').insert({
       ...evidenceForm, activity_id: id, uploaded_by: profile.id, file_path: path,
-      evidence_date: evidenceForm.evidence_date || new Date().toISOString().split('T')[0],
+      evidence_date: evidenceForm.evidence_date || getTodayDateInputValue(),
     });
     setShowEvidenceForm(false);
     setEvidenceForm({ title:'', description:'', evidence_type:'documento', evidence_date:'' });
     setEvidenceFile(null);
     setUploading(false);
-    load();
+    void load();
   }
 
   async function downloadEvidence(ev) {
@@ -173,7 +176,7 @@ export default function ActivityDetailPage() {
                     </button>
                     <div style={{flex:1}}>
                       <span style={{fontSize:'0.85rem', textDecoration: t.status === 'finalizado' ? 'line-through' : 'none', color: t.status === 'finalizado' ? 'var(--color-text-muted)' : 'var(--color-text)'}}>{t.title}</span>
-                      {t.due_date && <span style={{fontSize:'0.7rem',color:'var(--color-text-muted)',marginLeft:8}}>{new Date(t.due_date).toLocaleDateString('es-CL')}</span>}
+                      {t.due_date && <span style={{fontSize:'0.7rem',color:'var(--color-text-muted)',marginLeft:8}}>{formatDateOnly(t.due_date)}</span>}
                     </div>
                     {canEditThis && <button className="btn btn-ghost btn-sm" onClick={() => deleteTask(t.id)}><Trash2 size={12} /></button>}
                   </div>
@@ -257,9 +260,9 @@ export default function ActivityDetailPage() {
               <div>
                 <div style={{fontSize:'0.7rem',color:'var(--color-text-muted)',textTransform:'uppercase',fontWeight:600}}>Fechas</div>
                 <div style={{fontSize:'0.85rem'}}>
-                  {activity.start_date ? new Date(activity.start_date).toLocaleDateString('es-CL') : '—'}
+                  {formatDateOnly(activity.start_date)}
                   {' → '}
-                  {activity.end_date ? new Date(activity.end_date).toLocaleDateString('es-CL') : '—'}
+                  {formatDateOnly(activity.end_date)}
                   {activity.duration_days != null && ` (${activity.duration_days} días)`}
                 </div>
               </div>
@@ -290,14 +293,14 @@ export default function ActivityDetailPage() {
                     <div style={{fontWeight:500}}>{u.profiles?.full_name || 'Usuario'}</div>
                     <div style={{color:'var(--color-text-muted)',fontSize:'0.72rem'}}>
                       {u.previous_status && `${STATUS_LABELS[u.previous_status]} → ${STATUS_LABELS[u.new_status]}`}
-                      {u.previous_progress_percent != null && ` | ${u.previous_progress_percent}% → ${u.new_progress_percent}%`}
-                    </div>
-                    {u.update_comment && <div style={{marginTop:2}}>{u.update_comment}</div>}
-                    <div style={{color:'var(--color-text-light)',fontSize:'0.7rem',marginTop:2}}>
-                      {new Date(u.created_at).toLocaleDateString('es-CL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
-                    </div>
+                    {u.previous_progress_percent != null && ` | ${u.previous_progress_percent}% → ${u.new_progress_percent}%`}
                   </div>
-                ))}
+                  {u.update_comment && <div style={{marginTop:2}}>{u.update_comment}</div>}
+                  <div style={{color:'var(--color-text-light)',fontSize:'0.7rem',marginTop:2}}>
+                      {formatDateTime(u.created_at, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+                  </div>
+                </div>
+              ))}
               </div>
             )}
           </div>

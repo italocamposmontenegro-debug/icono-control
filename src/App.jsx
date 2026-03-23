@@ -14,8 +14,8 @@ import CarrerasPage from './pages/CarrerasPage';
 import UsuariosPage from './pages/UsuariosPage';
 import { Loader } from 'lucide-react';
 
-function ProtectedRoute({ children, adminOnly = false }) {
-  const { user, profile, loading } = useAuth();
+function ProtectedRoute({ children, adminOnly = false, editOnly = false }) {
+  const { user, profile, loading, canEdit } = useAuth();
 
   if (loading) {
     return (
@@ -27,6 +27,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
   if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && profile?.role !== 'admin_comite') return <Navigate to="/" replace />;
+  if (editOnly && !canEdit) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -41,9 +42,13 @@ function App() {
           }>
             <Route index element={<DashboardPage />} />
             <Route path="actividades" element={<ActivitiesPage />} />
-            <Route path="actividades/nueva" element={<ActivityFormPage />} />
+            <Route path="actividades/nueva" element={
+              <ProtectedRoute editOnly><ActivityFormPage /></ProtectedRoute>
+            } />
             <Route path="actividades/:id" element={<ActivityDetailPage />} />
-            <Route path="actividades/:id/editar" element={<ActivityFormPage />} />
+            <Route path="actividades/:id/editar" element={
+              <ProtectedRoute editOnly><ActivityFormPage /></ProtectedRoute>
+            } />
             <Route path="cronograma" element={<CronogramaPage />} />
             <Route path="evidencias" element={<EvidenciasPage />} />
             <Route path="historial" element={<HistorialPage />} />
