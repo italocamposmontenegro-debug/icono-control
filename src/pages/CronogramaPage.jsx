@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { formatDateOnly, parseDateOnly } from '../utils/date';
+import { useAuth } from '../contexts/AuthContext';
+import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
+import { getActivityMetadata, metadataIncludes, uniqueMetadataOptions } from '../utils/activityMetadata';
 
 const STATUS_COLORS = { pendiente:'#eab308', en_curso:'#3b82f6', finalizado:'#22c55e', retrasado:'#ef4444', suspendido:'#6b7280' };
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
 
 export default function CronogramaPage() {
+  const { profile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [careers, setCareers] = useState([]);
   const [objectives, setObjectives] = useState([]);
@@ -13,28 +17,45 @@ export default function CronogramaPage() {
   const [filterCareer, setFilterCareer] = useState('');
   const [filterObjective, setFilterObjective] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterStage, setFilterStage] = useState('');
+  const [filterTerritory, setFilterTerritory] = useState('');
+  const [filterSemester, setFilterSemester] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
+      await ensureIconicProject2026Seed(profile);
       const [aRes, cRes, oRes] = await Promise.all([
         supabase.from('activities').select('*, careers(name, code)').not('start_date','is',null).order('start_date'),
         supabase.from('careers').select('*').eq('active',true).order('name'),
         supabase.from('objectives').select('*').eq('active',true).order('order_index'),
       ]);
+
+      if (cancelled) return;
       setActivities(aRes.data || []);
       setCareers(cRes.data || []);
       setObjectives(oRes.data || []);
       setLoading(false);
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [profile]);
 
   const filtered = activities.filter(a => {
+    const metadata = getActivityMetadata(a);
     if (filterCareer && a.career_id !== filterCareer) return false;
     if (filterObjective && a.objective_id !== filterObjective) return false;
     if (filterStatus && a.status !== filterStatus) return false;
+    if (filterStage && !metadataIncludes(metadata, 'stage', filterStage)) return false;
+    if (filterTerritory && !metadataIncludes(metadata, 'territory', filterTerritory)) return false;
+    if (filterSemester && !metadataIncludes(metadata, 'semester', filterSemester)) return false;
     return true;
   });
+
+  const stages = uniqueMetadataOptions(activities, 'stage');
+  const territories = uniqueMetadataOptions(activities, 'territory');
+  const semesters = uniqueMetadataOptions(activities, 'semester');
 
   // Calculate timeline range
   const dates = filtered.flatMap(a => {
@@ -79,6 +100,18 @@ export default function CronogramaPage() {
         <select className="form-select" value={filterObjective} onChange={e => setFilterObjective(e.target.value)}>
           <option value="">Todos los objetivos</option>
           {objectives.map(o => <option key={o.id} value={o.id}>{o.title.substring(0,50)}</option>)}
+        </select>
+        <select className="form-select" value={filterStage} onChange={e => setFilterStage(e.target.value)}>
+          <option value="">Todas las etapas</option>
+          {stages.map(stage => <option key={stage} value={stage}>{stage}</option>)}
+        </select>
+        <select className="form-select" value={filterTerritory} onChange={e => setFilterTerritory(e.target.value)}>
+          <option value="">Todos los territorios</option>
+          {territories.map(territory => <option key={territory} value={territory}>{territory}</option>)}
+        </select>
+        <select className="form-select" value={filterSemester} onChange={e => setFilterSemester(e.target.value)}>
+          <option value="">Todos los semestres</option>
+          {semesters.map(semester => <option key={semester} value={semester}>{semester}</option>)}
         </select>
       </div>
 

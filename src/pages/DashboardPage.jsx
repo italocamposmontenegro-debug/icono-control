@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import {
   Activity, ClipboardList, CheckCircle2, Clock, AlertTriangle,
-  FileImage, GraduationCap, TrendingUp, ArrowRight
+  FileImage, GraduationCap, TrendingUp, ArrowRight, Target
 } from 'lucide-react';
-import { formatDateOnly } from '../utils/date';
+import { formatDateOnly, parseDateOnly } from '../utils/date';
+import { ICONIC_PROJECT_2026 } from '../data/iconicProject2026';
+import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
+import { getActivityMetadata } from '../utils/activityMetadata';
 
 const STATUS_COLORS = {
   pendiente: '#eab308', en_curso: '#3b82f6',
@@ -21,6 +25,7 @@ const STATUS_LABELS = {
 };
 
 export default function DashboardPage() {
+  const { profile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [careers, setCareers] = useState([]);
   const [evidence, setEvidence] = useState([]);
@@ -29,7 +34,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
+      await ensureIconicProject2026Seed(profile);
       const [aRes, cRes, eRes, oRes, tRes] = await Promise.all([
         supabase.from('activities').select('*, careers(name, code), objectives(title)'),
         supabase.from('careers').select('*').eq('active', true),
@@ -37,6 +45,8 @@ export default function DashboardPage() {
         supabase.from('objectives').select('*').eq('active', true).order('order_index'),
         supabase.from('timeline_events').select('*').order('event_date', { ascending: false }).limit(5),
       ]);
+
+      if (cancelled) return;
       setActivities(aRes.data || []);
       setCareers(cRes.data || []);
       setEvidence(eRes.data || []);
@@ -45,7 +55,8 @@ export default function DashboardPage() {
       setLoading(false);
     }
     load();
-  }, []);
+    return () => { cancelled = true; };
+  }, [profile]);
 
   if (loading) {
     return (
@@ -63,6 +74,15 @@ export default function DashboardPage() {
   const noEvidence = activities.filter(a =>
     a.status !== 'pendiente' && !evidence.some(e => e.activity_id === a.id)
   );
+  const withIndicators = activities.filter(a => getActivityMetadata(a).indicators?.length > 0).length;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingClose = activities.filter(a => {
+    const end = parseDateOnly(a.end_date);
+    if (!end) return false;
+    const diffDays = Math.ceil((end - today) / 86400000);
+    return diffDays >= 0 && diffDays <= 45 && a.status !== 'finalizado';
+  });
 
   // Career progress
   const careerData = careers.map(c => {
@@ -94,11 +114,25 @@ export default function DashboardPage() {
         <div>
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">
-            Resumen ejecutivo del Proyecto Ícono
+            Resumen ejecutivo del Proyecto Iconico 2026
           </p>
         </div>
         <div style={{fontSize:'0.8rem', color:'var(--color-text-muted)'}}>
           {new Date().toLocaleDateString('es-CL', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+        </div>
+      </div>
+
+      <div className="project-summary">
+        <div>
+          <div className="card-title" style={{marginBottom:4}}>Proyecto disponible</div>
+          <h2>{ICONIC_PROJECT_2026.name}</h2>
+          <p>{ICONIC_PROJECT_2026.objective}</p>
+        </div>
+        <div className="project-summary-meta">
+          <span>{ICONIC_PROJECT_2026.unit}</span>
+          <span>{ICONIC_PROJECT_2026.scope}</span>
+          <span>{ICONIC_PROJECT_2026.territory} · {ICONIC_PROJECT_2026.year}</span>
+          <span>Responsable: {ICONIC_PROJECT_2026.responsible.name}</span>
         </div>
       </div>
 
@@ -153,8 +187,8 @@ export default function DashboardPage() {
           <div className="kpi-icon" style={{background:'rgba(59,130,246,0.1)', color:'#3b82f6'}}>
             <FileImage size={20} />
           </div>
-          <div className="kpi-value">{evidence.length}</div>
-          <div className="kpi-label">Evidencias Cargadas</div>
+          <div className="kpi-value">{noEvidence.length}</div>
+          <div className="kpi-label">Evidencia Pendiente</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-icon" style={{background:'rgba(34,197,94,0.1)', color:'#22c55e'}}>
@@ -162,6 +196,20 @@ export default function DashboardPage() {
           </div>
           <div className="kpi-value">{careerData.length}/{careers.length}</div>
           <div className="kpi-label">Carreras con Actividades</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon" style={{background:'rgba(197,163,78,0.1)', color:'var(--color-accent)'}}>
+            <Target size={20} />
+          </div>
+          <div className="kpi-value">{withIndicators}</div>
+          <div className="kpi-label">Con Indicadores</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon" style={{background:'rgba(234,179,8,0.1)', color:'#eab308'}}>
+            <Clock size={20} />
+          </div>
+          <div className="kpi-value">{upcomingClose.length}</div>
+          <div className="kpi-label">Próximas a Cierre</div>
         </div>
       </div>
 
@@ -345,6 +393,35 @@ export default function DashboardPage() {
           display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
           gap: var(--space-md); margin-bottom: var(--space-lg);
         }
+        .project-summary {
+          display: grid;
+          grid-template-columns: minmax(0, 1.8fr) minmax(240px, 0.8fr);
+          gap: var(--space-lg);
+          align-items: start;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          padding: var(--space-lg);
+          margin-bottom: var(--space-lg);
+          box-shadow: var(--shadow-sm);
+        }
+        .project-summary h2 {
+          font-size: 1.15rem;
+          line-height: 1.35;
+          margin-bottom: 6px;
+        }
+        .project-summary p {
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+          line-height: 1.6;
+        }
+        .project-summary-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          color: var(--color-text-secondary);
+          font-size: 0.82rem;
+        }
         .dashboard-charts {
           display: flex; gap: var(--space-md);
           margin-bottom: var(--space-lg); flex-wrap: wrap;
@@ -371,6 +448,7 @@ export default function DashboardPage() {
         .timeline-mini-title { color: var(--color-text-secondary); }
         @media (max-width: 768px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+          .project-summary { grid-template-columns: 1fr; }
           .dashboard-charts, .dashboard-bottom { flex-direction: column; }
         }
       `}</style>

@@ -5,6 +5,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDateOnly, formatDateTime, getTodayDateInputValue } from '../utils/date';
+import { getActivityMetadata, stripMetadataBlock } from '../utils/activityMetadata';
 import {
   ArrowLeft, Edit, Trash2, Plus, FileImage, CheckCircle2,
   Clock
@@ -103,6 +104,9 @@ export default function ActivityDetailPage() {
   if (!activity) {
     return <div className="page-content"><div className="empty-state"><p>Actividad no encontrada.</p></div></div>;
   }
+  const metadata = getActivityMetadata(activity);
+  const hasProjectMetadata = Object.keys(metadata).length > 0;
+  const plainObservations = stripMetadataBlock(activity.observations || '');
 
   return (
     <div className="page-content">
@@ -135,13 +139,88 @@ export default function ActivityDetailPage() {
             <p style={{fontSize:'0.9rem', color:'var(--color-text-secondary)', lineHeight:1.7}}>
               {activity.description || 'Sin descripción.'}
             </p>
-            {activity.observations && (
+            {plainObservations && (
               <>
                 <div className="card-title" style={{marginTop:'var(--space-lg)', marginBottom:'var(--space-sm)'}}>Observaciones</div>
-                <p style={{fontSize:'0.85rem', color:'var(--color-text-muted)', lineHeight:1.6}}>{activity.observations}</p>
+                <p style={{fontSize:'0.85rem', color:'var(--color-text-muted)', lineHeight:1.6}}>{plainObservations}</p>
               </>
             )}
           </div>
+
+          {hasProjectMetadata && (
+            <div className="card">
+              <div className="card-header">
+                <span className="card-title">Seguimiento Proyecto Iconico 2026</span>
+                {metadata.stage && <span className="badge" style={{background:'var(--color-accent-bg)',color:'var(--color-accent)'}}>{metadata.stage}</span>}
+              </div>
+
+              <div className="metadata-grid">
+                <div>
+                  <div className="metadata-label">Periodo</div>
+                  <div className="metadata-value">{metadata.period || 'Pendiente de confirmar'}</div>
+                </div>
+                <div>
+                  <div className="metadata-label">Territorio</div>
+                  <div className="metadata-value">{metadata.territory || 'Por definir'}</div>
+                </div>
+                <div>
+                  <div className="metadata-label">Población objetivo</div>
+                  <div className="metadata-value">{metadata.targetPopulation || 'Por definir'}</div>
+                </div>
+                <div>
+                  <div className="metadata-label">Responsable operativo</div>
+                  <div className="metadata-value">{metadata.responsiblePerson || 'Pendiente de confirmar'}</div>
+                </div>
+                {metadata.courseName && (
+                  <div>
+                    <div className="metadata-label">Asignatura(s)</div>
+                    <div className="metadata-value">{metadata.courseName}</div>
+                  </div>
+                )}
+                {metadata.semester && (
+                  <div>
+                    <div className="metadata-label">Semestre</div>
+                    <div className="metadata-value">{metadata.semester}</div>
+                  </div>
+                )}
+              </div>
+
+              {metadata.territorialAxis?.length > 0 && (
+                <div style={{marginTop:'var(--space-md)'}}>
+                  <div className="metadata-label">Ejes críticos</div>
+                  <div className="chip-list">
+                    {metadata.territorialAxis.map(axis => <span className="chip" key={axis}>{axis}</span>)}
+                  </div>
+                </div>
+              )}
+
+              <div className="metadata-columns">
+                {metadata.expectedEvidence?.length > 0 && (
+                  <div>
+                    <div className="metadata-label">Evidencias esperadas</div>
+                    <ul className="metadata-list">
+                      {metadata.expectedEvidence.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {metadata.indicators?.length > 0 && (
+                  <div>
+                    <div className="metadata-label">Indicadores asociados</div>
+                    <ul className="metadata-list">
+                      {metadata.indicators.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {(metadata.nextAction || metadata.pending) && (
+                <div className="metadata-callout">
+                  {metadata.nextAction && <div><strong>Próxima acción:</strong> {metadata.nextAction}</div>}
+                  {metadata.pending && <div><strong>Pendiente:</strong> {metadata.pending}</div>}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tasks */}
           <div className="card">
@@ -308,6 +387,61 @@ export default function ActivityDetailPage() {
       </div>
 
       <style>{`
+        .metadata-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: var(--space-md);
+        }
+        .metadata-label {
+          font-size: 0.7rem;
+          color: var(--color-text-muted);
+          text-transform: uppercase;
+          font-weight: 700;
+          margin-bottom: 3px;
+        }
+        .metadata-value {
+          font-size: 0.86rem;
+          color: var(--color-text-secondary);
+          line-height: 1.5;
+        }
+        .chip-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .chip {
+          display: inline-flex;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: var(--color-surface-alt);
+          color: var(--color-text-secondary);
+          font-size: 0.72rem;
+          font-weight: 600;
+        }
+        .metadata-columns {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: var(--space-lg);
+          margin-top: var(--space-md);
+        }
+        .metadata-list {
+          margin-left: 1rem;
+          color: var(--color-text-secondary);
+          font-size: 0.85rem;
+          line-height: 1.7;
+        }
+        .metadata-callout {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          margin-top: var(--space-md);
+          padding: var(--space-md);
+          border-radius: var(--radius-md);
+          background: var(--color-accent-bg);
+          color: var(--color-text-secondary);
+          font-size: 0.84rem;
+          line-height: 1.5;
+        }
         @media (max-width: 768px) {
           .page-content > div:last-of-type { grid-template-columns: 1fr !important; }
         }

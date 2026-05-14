@@ -3,9 +3,59 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Save, Loader } from 'lucide-react';
+import {
+  getActivityMetadata,
+  listToTextarea,
+  mergeMetadataIntoObservations,
+  stripMetadataBlock,
+  textareaToList,
+} from '../utils/activityMetadata';
 
 const STATUSES = ['pendiente','en_curso','finalizado','retrasado','suspendido'];
 const PRIORITIES = ['baja','media','alta','critica'];
+const STAGES = ['', 'Etapa 1', 'Etapa 2', 'Etapa 3', 'Etapa 4'];
+
+const EMPTY_META_FORM = {
+  projectName: '',
+  stage: '',
+  period: '',
+  activityType: '',
+  year: '',
+  territory: '',
+  institutionPartner: '',
+  targetPopulation: '',
+  career: '',
+  courseName: '',
+  semester: '',
+  responsiblePerson: '',
+  instrument: '',
+  associatedObjective: '',
+  territorialAxis: '',
+  expectedEvidence: '',
+  indicators: '',
+  nextAction: '',
+  pending: '',
+  sourceObservation: '',
+};
+
+function metadataToForm(metadata = {}) {
+  return {
+    ...EMPTY_META_FORM,
+    ...metadata,
+    territorialAxis: listToTextarea(metadata.territorialAxis),
+    expectedEvidence: listToTextarea(metadata.expectedEvidence),
+    indicators: listToTextarea(metadata.indicators),
+  };
+}
+
+function formToMetadata(form) {
+  return {
+    ...form,
+    territorialAxis: textareaToList(form.territorialAxis),
+    expectedEvidence: textareaToList(form.expectedEvidence),
+    indicators: textareaToList(form.indicators),
+  };
+}
 
 export default function ActivityFormPage() {
   const { id } = useParams();
@@ -26,6 +76,7 @@ export default function ActivityFormPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [blocked, setBlocked] = useState(false);
+  const [metaForm, setMetaForm] = useState(EMPTY_META_FORM);
 
   useEffect(() => {
     async function load() {
@@ -48,6 +99,7 @@ export default function ActivityFormPage() {
             return;
           }
 
+          const metadata = getActivityMetadata(data);
           setForm({
             title: data.title || '',
             description: data.description || '',
@@ -61,8 +113,9 @@ export default function ActivityFormPage() {
             responsible_profile_id: data.responsible_profile_id || '',
             internal_assistants_text: data.internal_assistants_text || '',
             external_assistants_text: data.external_assistants_text || '',
-            observations: data.observations || '',
+            observations: stripMetadataBlock(data.observations || ''),
           });
+          setMetaForm(metadataToForm(metadata));
         }
       }
       setLoading(false);
@@ -71,6 +124,7 @@ export default function ActivityFormPage() {
   }, [id, isAdmin, isEdit, profile?.career_id, profile?.role]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const handleMetaChange = (field, value) => setMetaForm(prev => ({ ...prev, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,6 +134,7 @@ export default function ActivityFormPage() {
 
     const payload = {
       ...form,
+      observations: mergeMetadataIntoObservations(form.observations, formToMetadata(metaForm)),
       objective_id: form.objective_id || null,
       career_id: form.career_id || null,
       responsible_profile_id: form.responsible_profile_id || null,
@@ -155,6 +210,104 @@ export default function ActivityFormPage() {
           <div className="form-group">
             <label className="form-label">Descripción</label>
             <textarea className="form-textarea" value={form.description} onChange={e => handleChange('description', e.target.value)} placeholder="Descripción detallada de la actividad" />
+          </div>
+
+          <div className="card" style={{background:'var(--color-surface-alt)', boxShadow:'none', padding:'var(--space-md)'}}>
+            <div className="card-title" style={{marginBottom:'var(--space-md)'}}>Seguimiento Proyecto Iconico 2026</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Proyecto</label>
+                <input className="form-input" value={metaForm.projectName} onChange={e => handleMetaChange('projectName', e.target.value)} placeholder="Proyecto asociado" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Etapa</label>
+                <select className="form-select" value={metaForm.stage} onChange={e => handleMetaChange('stage', e.target.value)}>
+                  {STAGES.map(stage => <option key={stage || 'empty'} value={stage}>{stage || 'Sin etapa'}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Periodo</label>
+                <input className="form-input" value={metaForm.period} onChange={e => handleMetaChange('period', e.target.value)} placeholder="Ej: mayo-octubre 2026" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <input className="form-input" value={metaForm.activityType} onChange={e => handleMetaChange('activityType', e.target.value)} placeholder="Intervención, evaluación, diagnóstico..." />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Territorio</label>
+                <input className="form-input" value={metaForm.territory} onChange={e => handleMetaChange('territory', e.target.value)} placeholder="Casablanca / sector / institución" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Población objetivo</label>
+                <input className="form-input" value={metaForm.targetPopulation} onChange={e => handleMetaChange('targetPopulation', e.target.value)} placeholder="Personas mayores, cuidadoras..." />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Institución vinculada</label>
+                <input className="form-input" value={metaForm.institutionPartner} onChange={e => handleMetaChange('institutionPartner', e.target.value)} placeholder="Municipalidad, corporación..." />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Carrera(s) / disciplina(s)</label>
+                <input className="form-input" value={metaForm.career} onChange={e => handleMetaChange('career', e.target.value)} placeholder="Carrera o interdisciplinaria" />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Asignatura(s)</label>
+                <input className="form-input" value={metaForm.courseName} onChange={e => handleMetaChange('courseName', e.target.value)} placeholder="Asignaturas asociadas" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Semestre</label>
+                <input className="form-input" value={metaForm.semester} onChange={e => handleMetaChange('semester', e.target.value)} placeholder="Primer semestre, segundo semestre..." />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Responsable operativo</label>
+                <input className="form-input" value={metaForm.responsiblePerson} onChange={e => handleMetaChange('responsiblePerson', e.target.value)} placeholder="Nombre responsable" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Instrumento asociado</label>
+                <input className="form-input" value={metaForm.instrument} onChange={e => handleMetaChange('instrument', e.target.value)} placeholder="SF-36 V2 u otro" />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Ejes críticos</label>
+              <textarea className="form-textarea" value={metaForm.territorialAxis} onChange={e => handleMetaChange('territorialAxis', e.target.value)} placeholder="Un eje por línea" />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Evidencias esperadas</label>
+                <textarea className="form-textarea" value={metaForm.expectedEvidence} onChange={e => handleMetaChange('expectedEvidence', e.target.value)} placeholder="Una evidencia por línea" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Indicadores asociados</label>
+                <textarea className="form-textarea" value={metaForm.indicators} onChange={e => handleMetaChange('indicators', e.target.value)} placeholder="Un indicador por línea" />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Próxima acción</label>
+                <textarea className="form-textarea" value={metaForm.nextAction} onChange={e => handleMetaChange('nextAction', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Datos pendientes</label>
+                <textarea className="form-textarea" value={metaForm.pending} onChange={e => handleMetaChange('pending', e.target.value)} placeholder="Por definir / pendiente de confirmar" />
+              </div>
+            </div>
           </div>
 
           <div className="form-row">

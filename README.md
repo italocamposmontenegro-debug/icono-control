@@ -139,6 +139,12 @@ Las migraciones SQL se aplicaron automáticamente vía MCP. Los archivos de refe
 10. **Carreras** — CRUD de carreras (admin)
 11. **Usuarios** — Gestión de roles y perfiles (admin)
 
+## Proyecto Icónico 2026
+
+La carga inicial editable del **Proyecto Icónico Envejecimiento Saludable Activo. Un enfoque transdisciplinario** está documentada en [`docs/proyecto-iconico-2026.md`](docs/proyecto-iconico-2026.md).
+
+El seed de respaldo para Supabase está en [`supabase/seed_iconic_project_2026.sql`](supabase/seed_iconic_project_2026.sql). La app también ejecuta una carga idempotente al entrar con un perfil `admin_comite`, creando solo los registros faltantes y sin sobrescribir ediciones previas.
+
 ## Despliegue
 
 ### Vercel
