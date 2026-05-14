@@ -11,39 +11,88 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*, careers(name, code)')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
+
+    if (error) throw error;
     setProfile(data);
     return data;
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    let active = true;
+    const finishLoading = () => active && setLoading(false);
+    const startupTimeout = window.setTimeout(finishLoading, 8000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    async function loadInitialSession() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!active) return;
+
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
-        setLoading(false);
+      } catch (error) {
+        console.warn('No se pudo restaurar la sesion:', error);
+        if (active) {
+          setUser(null);
+          setProfile(null);
+        }
+      } finally {
+        window.clearTimeout(startupTimeout);
+        finishLoading();
+      }
+    }
+
+    void loadInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        void (async () => {
+          try {
+            if (!active) return;
+            setUser(session?.user ?? null);
+            if (session?.user) {
+              await fetchProfile(session.user.id);
+            } else {
+              setProfile(null);
+            }
+          } catch (error) {
+            console.warn('No se pudo actualizar el perfil de sesion:', error);
+            if (active) setProfile(null);
+          } finally {
+            finishLoading();
+          }
+        })();
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      window.clearTimeout(startupTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!loading || !user || profile) return;
+
+    const profileTimeout = window.setTimeout(() => {
+      if (!profile) {
+        console.warn('La carga del perfil demoro demasiado; se libera el loader.');
+        setLoading(false);
+      }
+    }, 8000);
+
+    return () => window.clearTimeout(profileTimeout);
+  }, [loading, profile, user]);
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
