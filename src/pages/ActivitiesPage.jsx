@@ -6,6 +6,7 @@ import { Plus, Search, ClipboardList } from 'lucide-react';
 import { formatDateOnly } from '../utils/date';
 import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
 import { getActivityMetadata, metadataIncludes, normalizeText, uniqueMetadataOptions } from '../utils/activityMetadata';
+import { withoutLegacyActivities } from '../data/iconicProject2026';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
 const PRIORITY_LABELS = { baja:'Baja', media:'Media', alta:'Alta', critica:'Crítica' };
@@ -42,7 +43,7 @@ export default function ActivitiesPage() {
       ]);
 
       if (cancelled) return;
-      setActivities(aRes.data || []);
+      setActivities(withoutLegacyActivities(aRes.data || []));
       setCareers(cRes.data || []);
       setObjectives(oRes.data || []);
       setLoading(false);

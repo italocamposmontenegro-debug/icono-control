@@ -666,3 +666,22 @@ export const ICONIC_PROJECT_TIMELINE_EVENTS = [
     event_date: '2026-12-01',
   },
 ];
+
+export const LEGACY_ACTIVITY_IDS_TO_REMOVE = [
+  '3c6a885a-a54c-43f6-bae4-6f78db5edfb7',
+  'b885c4b3-88ae-416c-bc1a-5cff5d7230e4',
+  '4531f99e-7ce0-4d37-b5d7-e2b5c046d825',
+  '41f82145-414c-4994-85f1-067b5301238f',
+  'a1522c73-a136-4f01-a206-23b0937ac955',
+  'eb64000a-bf97-4bd1-8f45-809097d68399',
+  '036548c1-e429-4e33-96a4-273e78dcff33',
+  '98b6bbe5-6789-4bd1-9aca-40fd175e245d',
+];
+
+export function isLegacyActivity(activityId) {
+  return LEGACY_ACTIVITY_IDS_TO_REMOVE.includes(activityId);
+}
+
+export function withoutLegacyActivities(activities = []) {
+  return activities.filter(activity => !isLegacyActivity(activity.id));
+}

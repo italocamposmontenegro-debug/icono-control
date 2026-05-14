@@ -4,6 +4,7 @@ import {
   ICONIC_PROJECT_CAREERS,
   ICONIC_PROJECT_OBJECTIVE,
   ICONIC_PROJECT_TIMELINE_EVENTS,
+  LEGACY_ACTIVITY_IDS_TO_REMOVE,
 } from '../data/iconicProject2026';
 import { mergeMetadataIntoObservations, normalizeText } from '../utils/activityMetadata';
 
@@ -96,9 +97,36 @@ async function ensureTimelineEvents(profileId) {
   return missing.length;
 }
 
+async function deleteIfTableAllows(table) {
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .in('activity_id', LEGACY_ACTIVITY_IDS_TO_REMOVE);
+
+  if (error && error.code !== '42P01') {
+    console.warn(`No se pudo limpiar ${table}:`, error);
+  }
+}
+
+async function removeLegacyActivities() {
+  await deleteIfTableAllows('tasks');
+  await deleteIfTableAllows('evidence');
+  await deleteIfTableAllows('activity_updates');
+
+  const { error } = await supabase
+    .from('activities')
+    .delete()
+    .in('id', LEGACY_ACTIVITY_IDS_TO_REMOVE);
+
+  if (error) {
+    console.warn('No se pudieron limpiar actividades legacy:', error);
+  }
+}
+
 async function runSeed(profile) {
   const careers = await ensureCareers();
   const objective = await ensureObjective();
+  await removeLegacyActivities();
 
   const [{ data: profiles = [], error: profilesError }, { data: existingActivities = [], error: activitiesError }] =
     await Promise.all([

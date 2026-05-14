@@ -4,6 +4,7 @@
 
 - Se agrego `src/data/iconicProject2026.js` con el proyecto, etapas, actividades, carreras, ejes criticos, evidencias esperadas e indicadores 2026.
 - Se agrego `src/services/iconicProjectSeed.js` para cargar datos iniciales idempotentes en Supabase cuando entra un usuario `admin_comite`.
+- Se agrego limpieza acotada de actividades legacy por ID fijo para retirar registros previos que no pertenecen al prompt del Proyecto Iconico 2026.
 - Se agrego `src/utils/activityMetadata.js` para guardar metadatos de seguimiento dentro de `activities.observations` sin cambiar el esquema actual.
 - Se actualizaron Dashboard, Actividades, Cronograma, Reportes, Detalle y Formulario de Actividad para mostrar, filtrar y editar la informacion del Proyecto Iconico 2026.
 - Se agrego `supabase/seed_iconic_project_2026.sql` como respaldo para ejecutar la carga desde Supabase.
@@ -20,6 +21,8 @@ Al abrir Dashboard, Actividades, Cronograma o Reportes con un perfil `admin_comi
 - 4 eventos de linea de tiempo.
 
 La carga no actualiza actividades ya existentes con esos IDs, para no sobrescribir ediciones posteriores del coordinador.
+
+Ademas, la aplicacion oculta y, con sesion `admin_comite`, intenta eliminar solo los IDs legacy detectados antes de esta carga. Esta limpieza no afecta actividades futuras porque no usa un criterio generico de "todo lo que no este en la semilla".
 
 ## Como agregar nuevas actividades
 

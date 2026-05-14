@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDateOnly, formatDateTime, getTodayDateInputValue } from '../utils/date';
 import { getActivityMetadata, stripMetadataBlock } from '../utils/activityMetadata';
+import { isLegacyActivity } from '../data/iconicProject2026';
 import {
   ArrowLeft, Edit, Trash2, Plus, FileImage, CheckCircle2,
   Clock
@@ -40,7 +41,7 @@ export default function ActivityDetailPage() {
       supabase.from('evidence').select('*, profiles!evidence_uploaded_by_fkey(full_name)').eq('activity_id', id).order('created_at', { ascending: false }),
       supabase.from('activity_updates').select('*, profiles!activity_updates_updated_by_fkey(full_name)').eq('activity_id', id).order('created_at', { ascending: false }).limit(20),
     ]);
-    setActivity(aRes.data);
+    setActivity(aRes.data && !isLegacyActivity(aRes.data.id) ? aRes.data : null);
     setTasks(tRes.data || []);
     setEvidenceList(eRes.data || []);
     setUpdates(uRes.data || []);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { FileImage, Download, Search } from 'lucide-react';
+import { isLegacyActivity } from '../data/iconicProject2026';
 
 const EVIDENCE_TYPES = { registro_fotografico:'Registro Fotográfico', acta:'Acta', lista_asistencia:'Lista Asistencia', correo:'Correo', aparicion_medios:'Aparición Medios', documento:'Documento', otro:'Otro' };
 
@@ -15,7 +16,7 @@ export default function EvidenciasPage() {
       const { data } = await supabase.from('evidence')
         .select('*, activities(title, careers(code)), profiles!evidence_uploaded_by_fkey(full_name)')
         .order('created_at', { ascending: false });
-      setEvidence(data || []);
+      setEvidence((data || []).filter(ev => !isLegacyActivity(ev.activity_id)));
       setLoading(false);
     }
     load();

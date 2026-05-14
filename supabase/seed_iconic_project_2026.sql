@@ -4,6 +4,66 @@
 
 begin;
 
+with legacy_ids(id) as (
+  values
+    ('3c6a885a-a54c-43f6-bae4-6f78db5edfb7'::uuid),
+    ('b885c4b3-88ae-416c-bc1a-5cff5d7230e4'::uuid),
+    ('4531f99e-7ce0-4d37-b5d7-e2b5c046d825'::uuid),
+    ('41f82145-414c-4994-85f1-067b5301238f'::uuid),
+    ('a1522c73-a136-4f01-a206-23b0937ac955'::uuid),
+    ('eb64000a-bf97-4bd1-8f45-809097d68399'::uuid),
+    ('036548c1-e429-4e33-96a4-273e78dcff33'::uuid),
+    ('98b6bbe5-6789-4bd1-9aca-40fd175e245d'::uuid)
+)
+delete from public.activity_updates u
+using legacy_ids l
+where u.activity_id = l.id;
+
+with legacy_ids(id) as (
+  values
+    ('3c6a885a-a54c-43f6-bae4-6f78db5edfb7'::uuid),
+    ('b885c4b3-88ae-416c-bc1a-5cff5d7230e4'::uuid),
+    ('4531f99e-7ce0-4d37-b5d7-e2b5c046d825'::uuid),
+    ('41f82145-414c-4994-85f1-067b5301238f'::uuid),
+    ('a1522c73-a136-4f01-a206-23b0937ac955'::uuid),
+    ('eb64000a-bf97-4bd1-8f45-809097d68399'::uuid),
+    ('036548c1-e429-4e33-96a4-273e78dcff33'::uuid),
+    ('98b6bbe5-6789-4bd1-9aca-40fd175e245d'::uuid)
+)
+delete from public.tasks t
+using legacy_ids l
+where t.activity_id = l.id;
+
+with legacy_ids(id) as (
+  values
+    ('3c6a885a-a54c-43f6-bae4-6f78db5edfb7'::uuid),
+    ('b885c4b3-88ae-416c-bc1a-5cff5d7230e4'::uuid),
+    ('4531f99e-7ce0-4d37-b5d7-e2b5c046d825'::uuid),
+    ('41f82145-414c-4994-85f1-067b5301238f'::uuid),
+    ('a1522c73-a136-4f01-a206-23b0937ac955'::uuid),
+    ('eb64000a-bf97-4bd1-8f45-809097d68399'::uuid),
+    ('036548c1-e429-4e33-96a4-273e78dcff33'::uuid),
+    ('98b6bbe5-6789-4bd1-9aca-40fd175e245d'::uuid)
+)
+delete from public.evidence e
+using legacy_ids l
+where e.activity_id = l.id;
+
+with legacy_ids(id) as (
+  values
+    ('3c6a885a-a54c-43f6-bae4-6f78db5edfb7'::uuid),
+    ('b885c4b3-88ae-416c-bc1a-5cff5d7230e4'::uuid),
+    ('4531f99e-7ce0-4d37-b5d7-e2b5c046d825'::uuid),
+    ('41f82145-414c-4994-85f1-067b5301238f'::uuid),
+    ('a1522c73-a136-4f01-a206-23b0937ac955'::uuid),
+    ('eb64000a-bf97-4bd1-8f45-809097d68399'::uuid),
+    ('036548c1-e429-4e33-96a4-273e78dcff33'::uuid),
+    ('98b6bbe5-6789-4bd1-9aca-40fd175e245d'::uuid)
+)
+delete from public.activities a
+using legacy_ids l
+where a.id = l.id;
+
 with seed_careers(id, name, code, description) as (
   values
     ('20260000-0000-4000-8100-000000000001'::uuid, 'Interdisciplinaria', 'INTER', 'Actividades transdisciplinarias del Proyecto Iconico 2026.'),

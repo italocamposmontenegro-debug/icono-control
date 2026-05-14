@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Clock, ArrowRight } from 'lucide-react';
+import { isLegacyActivity } from '../data/iconicProject2026';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
 
@@ -20,7 +21,7 @@ export default function HistorialPage() {
           .select('*, profiles!timeline_events_created_by_fkey(full_name), careers(name)')
           .order('event_date', { ascending: false }),
       ]);
-      setUpdates(uRes.data || []);
+      setUpdates((uRes.data || []).filter(update => !isLegacyActivity(update.activity_id)));
       setTimeline(tRes.data || []);
       setLoading(false);
     }

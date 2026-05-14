@@ -11,7 +11,7 @@ import {
   FileImage, GraduationCap, TrendingUp, ArrowRight, Target
 } from 'lucide-react';
 import { formatDateOnly, parseDateOnly } from '../utils/date';
-import { ICONIC_PROJECT_2026 } from '../data/iconicProject2026';
+import { ICONIC_PROJECT_2026, withoutLegacyActivities } from '../data/iconicProject2026';
 import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
 import { getActivityMetadata } from '../utils/activityMetadata';
 
@@ -47,7 +47,7 @@ export default function DashboardPage() {
       ]);
 
       if (cancelled) return;
-      setActivities(aRes.data || []);
+      setActivities(withoutLegacyActivities(aRes.data || []));
       setCareers(cRes.data || []);
       setEvidence(eRes.data || []);
       setObjectives(oRes.data || []);

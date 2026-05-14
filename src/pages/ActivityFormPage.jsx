@@ -10,6 +10,7 @@ import {
   stripMetadataBlock,
   textareaToList,
 } from '../utils/activityMetadata';
+import { isLegacyActivity } from '../data/iconicProject2026';
 
 const STATUSES = ['pendiente','en_curso','finalizado','retrasado','suspendido'];
 const PRIORITIES = ['baja','media','alta','critica'];
@@ -91,6 +92,12 @@ export default function ActivityFormPage() {
 
       if (isEdit) {
         const { data } = await supabase.from('activities').select('*').eq('id', id).single();
+        if (isLegacyActivity(id)) {
+          setBlocked(true);
+          setError('Esta actividad no pertenece al Proyecto Iconico 2026.');
+          setLoading(false);
+          return;
+        }
         if (data) {
           if (!isAdmin && profile?.role === 'responsable_carrera' && data.career_id !== profile?.career_id) {
             setBlocked(true);

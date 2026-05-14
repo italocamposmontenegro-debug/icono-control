@@ -4,6 +4,7 @@ import { formatDateOnly, parseDateOnly } from '../utils/date';
 import { useAuth } from '../contexts/AuthContext';
 import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
 import { getActivityMetadata, metadataIncludes, uniqueMetadataOptions } from '../utils/activityMetadata';
+import { withoutLegacyActivities } from '../data/iconicProject2026';
 
 const STATUS_COLORS = { pendiente:'#eab308', en_curso:'#3b82f6', finalizado:'#22c55e', retrasado:'#ef4444', suspendido:'#6b7280' };
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
@@ -33,7 +34,7 @@ export default function CronogramaPage() {
       ]);
 
       if (cancelled) return;
-      setActivities(aRes.data || []);
+      setActivities(withoutLegacyActivities(aRes.data || []));
       setCareers(cRes.data || []);
       setObjectives(oRes.data || []);
       setLoading(false);
