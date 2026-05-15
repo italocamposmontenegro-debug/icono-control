@@ -129,7 +129,7 @@ function uniqueList(items) {
   return [...new Set(items.filter(Boolean))];
 }
 
-class PremiumPdf {
+class ProjectReportPdf {
   constructor({ project, modeLabel, monthLabel }) {
     this.project = project;
     this.modeLabel = modeLabel;
@@ -213,9 +213,9 @@ class PremiumPdf {
   }
 
   section(title, eyebrow) {
-    this.ensure(42);
+    this.ensure(52);
     if (eyebrow) this.text(eyebrow.toUpperCase(), MARGIN, this.y, { size: 7.6, font: 'F2', color: COLORS.gold });
-    this.y -= eyebrow ? 14 : 0;
+    this.y -= eyebrow ? 22 : 0;
     this.text(title, MARGIN, this.y, { size: 16, font: 'F2', color: COLORS.ink });
     this.y -= 22;
     this.line(COLORS.line, MARGIN, this.y + 6, PAGE_WIDTH - MARGIN, this.y + 6, 0.5);
@@ -240,7 +240,7 @@ class PremiumPdf {
     for (let y = 140; y < 740; y += 42) this.line('0.17 0.22 0.33', MARGIN + 26, y, PAGE_WIDTH - MARGIN, y, 0.35);
     for (let x = MARGIN + 26; x < PAGE_WIDTH - MARGIN; x += 44) this.line('0.17 0.22 0.33', x, 118, x, 734, 0.35);
 
-    this.text('INFORME EJECUTIVO DE SEGUIMIENTO', MARGIN + 28, 708, { size: 9.5, font: 'F2', color: COLORS.gold });
+    this.text('INFORME PROYECTO ICONICO UVM', MARGIN + 28, 708, { size: 9.5, font: 'F2', color: COLORS.gold });
     wrapText(this.project.name, 38).forEach((line, index) => {
       this.text(line, MARGIN + 28, 657 - index * 32, { size: 27, font: 'F2', color: COLORS.white });
     });
@@ -385,7 +385,7 @@ export function downloadExecutivePdf({
   const pendingCount = activities.filter(activity => activity.status === 'pendiente').length;
   const finished = activities.filter(activity => activity.status === 'finalizado').length;
   const data = collectReportData(sortedActivities);
-  const pdf = new PremiumPdf({ project, modeLabel, monthLabel });
+  const pdf = new ProjectReportPdf({ project, modeLabel, monthLabel });
 
   pdf.coverPage({
     now,
@@ -495,7 +495,7 @@ export function downloadExecutivePdf({
   const link = document.createElement('a');
 
   link.href = url;
-  link.download = `informe_premium_icono_control_${new Date().toISOString().slice(0, 10)}.pdf`;
+  link.download = `informe_proyecto_iconico_uvm_${new Date().toISOString().slice(0, 10)}.pdf`;
   link.click();
   URL.revokeObjectURL(url);
 }

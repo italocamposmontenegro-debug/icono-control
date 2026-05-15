@@ -125,7 +125,7 @@ export default function ReportesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Reportes</h1>
-          <p className="page-subtitle">Informe ejecutivo PDF premium para seguimiento institucional</p>
+          <p className="page-subtitle">Informe Proyecto Icónico UVM para seguimiento institucional</p>
         </div>
         <div style={{display:'flex',gap:'var(--space-sm)'}}>
           <button className="btn btn-primary" onClick={downloadPdfReport}><Download size={14} /> Descargar informe PDF</button>
