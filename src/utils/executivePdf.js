@@ -477,16 +477,15 @@ export function downloadExecutivePdf({
     { key: 'pending', label: 'Pendiente / accion requerida', width: CONTENT_WIDTH - 236, maxChars: 54, maxLines: 3 },
   ]);
 
-  pdf.y -= 8;
-  pdf.fill(COLORS.softGold, MARGIN, pdf.y - 72, CONTENT_WIDTH, 72);
-  pdf.stroke('0.92 0.84 0.63', MARGIN, pdf.y - 72, CONTENT_WIDTH, 72, 0.6);
-  pdf.text('Nota de uso', MARGIN + 14, pdf.y - 22, { size: 10.5, font: 'F2', color: COLORS.ink });
-  pdf.multiBlock(
-    'El informe se genera desde los datos vivos de la plataforma. Nuevos archivos, prompts o instrucciones entregados al administrador pueden incorporarse como actualizaciones trazables del Proyecto Iconico 2026.',
-    MARGIN + 14,
-    pdf.y - 39,
-    90,
-    { size: 8.4, color: COLORS.slate, leading: 11, maxLines: 3 }
+  pdf.y -= 16;
+  pdf.ensure(26);
+  pdf.line(COLORS.line, MARGIN, pdf.y, PAGE_WIDTH - MARGIN, pdf.y, 0.5);
+  pdf.y -= 18;
+  pdf.text(
+    `Fecha del informe: ${formatDateOnly(now, { day: '2-digit', month: 'long', year: 'numeric' })}`,
+    MARGIN,
+    pdf.y,
+    { size: 8.8, font: 'F2', color: COLORS.muted }
   );
 
   const documentText = buildPdfDocument(pdf.finish());
