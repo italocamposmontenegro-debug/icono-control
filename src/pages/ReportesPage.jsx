@@ -1,26 +1,26 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { BarChart3, Download, FileText } from 'lucide-react';
-import { getTodayDateInputValue } from '../utils/date';
+import { parseDateOnly } from '../utils/date';
 import { useAuth } from '../contexts/AuthContext';
 import { ensureIconicProject2026Seed } from '../services/iconicProjectSeed';
 import {
   getActivityMetadata,
   metadataIncludes,
   normalizeText,
-  stripMetadataBlock,
   uniqueMetadataOptions,
 } from '../utils/activityMetadata';
-import { withoutLegacyActivities } from '../data/iconicProject2026';
+import { ICONIC_PROJECT_2026, withoutLegacyActivities } from '../data/iconicProject2026';
+import { downloadExecutivePdf } from '../utils/executivePdf';
 
 const STATUS_LABELS = { pendiente:'Pendiente', en_curso:'En Curso', finalizado:'Finalizado', retrasado:'Retrasado', suspendido:'Suspendido' };
-const PRIORITY_LABELS = { baja:'Baja', media:'Media', alta:'Alta', critica:'Crítica' };
 
 export default function ReportesPage() {
   const { profile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [careers, setCareers] = useState([]);
   const [objectives, setObjectives] = useState([]);
+  const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCareer, setFilterCareer] = useState('');
@@ -39,19 +39,21 @@ export default function ReportesPage() {
 
     async function load() {
       await ensureIconicProject2026Seed(profile);
-      const [aRes, cRes, oRes] = await Promise.all([
+      const [aRes, cRes, oRes, eRes] = await Promise.all([
         supabase
           .from('activities')
           .select('*, careers(name, code), objectives(title), profiles!activities_responsible_profile_id_fkey(full_name,email)')
           .order('start_date'),
         supabase.from('careers').select('*').eq('active',true).order('name'),
         supabase.from('objectives').select('*').eq('active',true).order('order_index'),
+        supabase.from('evidence').select('id, activity_id'),
       ]);
 
       if (cancelled) return;
       setActivities(withoutLegacyActivities(aRes.data || []));
       setCareers(cRes.data || []);
       setObjectives(oRes.data || []);
+      setEvidence(eRes.data || []);
       setLoading(false);
     }
     load();
@@ -84,93 +86,36 @@ export default function ReportesPage() {
   const semesters = uniqueMetadataOptions(activities, 'semester');
   const responsibles = uniqueMetadataOptions(activities, 'responsiblePerson');
 
-  const exportCSV = () => {
-    const header = [
-      'Título','Carrera','Objetivo','Etapa','Territorio','Población objetivo','Semestre','Responsable',
-      'Estado','Prioridad','Avance','Fecha Inicio','Fecha Término','Ejes críticos','Evidencias esperadas',
-      'Indicadores','Próxima acción','Pendientes','Observaciones'
-    ];
-    const rows = filtered.map(a => {
-      const metadata = getActivityMetadata(a);
+  const averageProgress = filtered.length
+    ? Math.round(filtered.reduce((sum, activity) => sum + (activity.progress_percent || 0), 0) / filtered.length)
+    : 0;
+  const filteredIds = new Set(filtered.map(activity => activity.id));
+  const filteredEvidence = evidence.filter(item => filteredIds.has(item.activity_id));
+  const noEvidence = filtered.filter(activity =>
+    activity.status !== 'pendiente' && !evidence.some(item => item.activity_id === activity.id)
+  );
+  const withIndicators = filtered.filter(activity => getActivityMetadata(activity).indicators?.length > 0).length;
+  const upcomingClose = filtered.filter(activity => {
+    const end = parseDateOnly(activity.end_date);
+    if (!end || Number.isNaN(end.getTime()) || activity.status === 'finalizado') return false;
 
-      return [
-      `"${a.title}"`,
-      a.careers?.name || '',
-      `"${a.objectives?.title || ''}"`,
-      metadata.stage || '',
-      `"${metadata.territory || ''}"`,
-      `"${metadata.targetPopulation || ''}"`,
-      metadata.semester || '',
-      `"${metadata.responsiblePerson || a.profiles?.full_name || a.profiles?.email || ''}"`,
-      STATUS_LABELS[a.status] || a.status,
-      PRIORITY_LABELS[a.priority] || a.priority,
-      `${a.progress_percent}%`,
-      a.start_date || '',
-      a.end_date || '',
-      `"${(metadata.territorialAxis || []).join('; ').replace(/"/g,'""')}"`,
-      `"${(metadata.expectedEvidence || []).join('; ').replace(/"/g,'""')}"`,
-      `"${(metadata.indicators || []).join('; ').replace(/"/g,'""')}"`,
-      `"${(metadata.nextAction || '').replace(/"/g,'""')}"`,
-      `"${(metadata.pending || '').replace(/"/g,'""')}"`,
-      `"${stripMetadataBlock(a.observations || '').replace(/"/g,'""')}"`,
-      ];
+    const now = new Date();
+    const days = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return days >= 0 && days <= 45;
+  });
+
+  const downloadPdfReport = () => {
+    downloadExecutivePdf({
+      activities: filtered,
+      evidence: filteredEvidence,
+      project: ICONIC_PROJECT_2026,
+      modeLabel: 'Reportes',
+      monthLabel: 'Corte ejecutivo',
+      avgProgress: averageProgress,
+      noEvidence,
+      withIndicators,
+      upcomingClose,
     });
-    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `icono_control_reporte_${getTodayDateInputValue()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const printReport = () => {
-    const win = window.open('', '_blank');
-    const avgProgress = filtered.length ? Math.round(filtered.reduce((s,a) => s + a.progress_percent, 0) / filtered.length) : 0;
-    const byStatus = (s) => filtered.filter(a => a.status === s).length;
-
-    win.document.write(`
-      <html><head><title>Reporte Ícono Control</title>
-      <style>
-        body { font-family: 'Inter', Arial, sans-serif; padding: 40px; color: #1a1a2e; }
-        h1 { font-size: 1.5rem; margin-bottom: 4px; }
-        .subtitle { color: #868e96; font-size: 0.85rem; margin-bottom: 24px; }
-        .kpis { display: flex; gap: 16px; margin-bottom: 24px; }
-        .kpi { background: #f8f9fa; padding: 12px 16px; border-radius: 8px; text-align: center; }
-        .kpi strong { display: block; font-size: 1.3rem; }
-        .kpi span { font-size: 0.75rem; color: #868e96; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { text-align: left; padding: 8px; border-bottom: 2px solid #dee2e6; font-size: 0.75rem; text-transform: uppercase; color: #868e96; }
-        td { padding: 8px; border-bottom: 1px solid #e9ecef; }
-        .footer { margin-top: 32px; font-size: 0.75rem; color: #868e96; }
-      </style></head><body>
-      <h1>Ícono Control — Reporte Ejecutivo</h1>
-      <div class="subtitle">Proyecto Ícono • Facultad de Ciencias de la Vida • UVM<br>Generado: ${new Date().toLocaleDateString('es-CL',{dateStyle:'long'})}</div>
-      <div class="kpis">
-        <div class="kpi"><strong>${filtered.length}</strong><span>Total</span></div>
-        <div class="kpi"><strong>${avgProgress}%</strong><span>Avance</span></div>
-        <div class="kpi"><strong>${byStatus('en_curso')}</strong><span>En Curso</span></div>
-        <div class="kpi"><strong>${byStatus('finalizado')}</strong><span>Finalizadas</span></div>
-        <div class="kpi"><strong>${byStatus('retrasado')}</strong><span>Retrasadas</span></div>
-      </div>
-      <table>
-        <thead><tr><th>Actividad</th><th>Carrera</th><th>Estado</th><th>Avance</th><th>Fechas</th></tr></thead>
-        <tbody>
-          ${filtered.map(a => `<tr>
-            <td>${a.title}</td>
-            <td>${a.careers?.code || '—'}</td>
-            <td>${STATUS_LABELS[a.status]}</td>
-            <td>${a.progress_percent}%</td>
-            <td>${a.start_date || '—'} → ${a.end_date || '—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      <div class="footer">Reporte confidencial — Proyecto Ícono, UVM</div>
-      </body></html>
-    `);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
   };
 
   if (loading) return <div className="page-content"><div className="skeleton skeleton-card" style={{height:300}} /></div>;
@@ -180,12 +125,29 @@ export default function ReportesPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Reportes</h1>
-          <p className="page-subtitle">Exportación y resumen ejecutivo</p>
+          <p className="page-subtitle">Informe ejecutivo PDF premium para seguimiento institucional</p>
         </div>
         <div style={{display:'flex',gap:'var(--space-sm)'}}>
-          <button className="btn btn-outline" onClick={exportCSV}><Download size={14} /> Exportar CSV</button>
-          <button className="btn btn-primary" onClick={printReport}><FileText size={14} /> Resumen Imprimible</button>
+          <button className="btn btn-primary" onClick={downloadPdfReport}><Download size={14} /> Descargar informe PDF</button>
         </div>
+      </div>
+
+      <div className="card report-focus-card">
+        <div>
+          <span className="report-eyebrow">Salida oficial</span>
+          <h2>Reporte académico ejecutivo</h2>
+          <p>
+            La descarga PDF consolida las actividades filtradas, evidencias, indicadores,
+            ejes territoriales, pendientes críticos y lectura ejecutiva del Proyecto Icónico 2026.
+          </p>
+        </div>
+        <div className="report-focus-metrics" aria-label="Resumen del informe PDF">
+          <span><strong>{filtered.length}</strong> actividades</span>
+          <span><strong>{averageProgress}%</strong> avance</span>
+          <span><strong>{noEvidence.length}</strong> evidencias pendientes</span>
+          <span><strong>{withIndicators}</strong> con indicadores</span>
+        </div>
+        <FileText size={54} className="report-focus-icon" />
       </div>
 
       <div className="filters-bar">
@@ -259,6 +221,85 @@ export default function ReportesPage() {
           </div>
         )}
       </div>
+
+      <style>{`
+        .report-focus-card {
+          position: relative;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: var(--space-lg);
+          align-items: center;
+          overflow: hidden;
+          margin-bottom: var(--space-lg);
+          padding: var(--space-lg);
+          border-color: rgba(26, 26, 46, 0.10);
+          background:
+            radial-gradient(circle at 92% 18%, rgba(214, 173, 66, 0.18), transparent 18rem),
+            linear-gradient(135deg, rgba(26, 26, 46, 0.98), rgba(29, 42, 58, 0.96));
+          color: #fff;
+        }
+        .report-focus-card h2 {
+          margin: 4px 0 8px;
+          color: #fff;
+          font-size: clamp(1.35rem, 3vw, 2.2rem);
+        }
+        .report-focus-card p {
+          max-width: 720px;
+          color: rgba(255,255,255,0.72);
+          line-height: 1.65;
+        }
+        .report-eyebrow {
+          color: #d6ad42;
+          font-size: 0.74rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .report-focus-metrics {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(118px, 1fr));
+          gap: 10px;
+          min-width: 270px;
+        }
+        .report-focus-metrics span {
+          padding: 12px;
+          border: 1px solid rgba(255,255,255,0.13);
+          border-radius: 12px;
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.72);
+          font-size: 0.76rem;
+          font-weight: 800;
+          backdrop-filter: blur(10px);
+        }
+        .report-focus-metrics strong {
+          display: block;
+          margin-bottom: 4px;
+          color: #fff;
+          font-size: 1.45rem;
+          line-height: 1;
+        }
+        .report-focus-icon {
+          position: absolute;
+          right: 22px;
+          bottom: 18px;
+          color: rgba(255,255,255,0.08);
+        }
+        @media (max-width: 820px) {
+          .report-focus-card {
+            grid-template-columns: 1fr;
+          }
+          .report-focus-metrics {
+            min-width: 0;
+          }
+        }
+        @media (max-width: 520px) {
+          .report-focus-metrics {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 }
