@@ -378,6 +378,7 @@ export function downloadExecutivePdf({
   noEvidence,
   withIndicators,
   upcomingClose,
+  meetings = [],
 }) {
   const now = new Date();
   const sortedActivities = sortByStage(activities);
@@ -446,6 +447,26 @@ export function downloadExecutivePdf({
     { key: 'progress', label: 'Av.', width: 42, maxChars: 6 },
     { key: 'period', label: 'Periodo', width: CONTENT_WIDTH - 428, maxChars: 16 },
   ]);
+
+  if (meetings.length) {
+    pdf.section('Coordinacion interinstitucional', 'Reuniones y acuerdos');
+    pdf.infoTable(meetings.map(meeting => ({
+      date: formatDateOnly(meeting.meeting_date, { day: '2-digit', month: 'short', year: 'numeric' }),
+      title: meeting.title,
+      participants: String(meeting.meeting_participants?.length || 0),
+      agreements: String(meeting.meeting_agreements?.length || 0),
+      pending: String((meeting.meeting_agreements || [])
+        .filter(agreement => agreement.status === 'pendiente_confirmacion').length),
+      source: String(meeting.documentation_level || 'Por confirmar').replaceAll('_', ' '),
+    })), [
+      { key: 'date', label: 'Fecha', width: 70, maxChars: 13 },
+      { key: 'title', label: 'Reunion / antecedente', width: 210, maxChars: 38 },
+      { key: 'participants', label: 'Part.', width: 44, maxChars: 5 },
+      { key: 'agreements', label: 'Ac.', width: 38, maxChars: 5 },
+      { key: 'pending', label: 'Pend.', width: 42, maxChars: 5 },
+      { key: 'source', label: 'Respaldo', width: CONTENT_WIDTH - 404, maxChars: 18 },
+    ]);
+  }
 
   pdf.section('Ejes, carreras e indicadores', 'Mapa academico-territorial');
   const axesRows = data.axes.slice(0, 8).map(([axis, count]) => ({ dimension: axis, valor: String(count), lectura: 'Eje critico con actividades asociadas.' }));

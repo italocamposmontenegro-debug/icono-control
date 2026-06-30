@@ -7,7 +7,7 @@ import {
 import {
   Activity, AlertTriangle, ArrowRight, CalendarClock, CheckCircle2,
   ClipboardList, Clock, Download, Eye, FileImage, FileText,
-  GraduationCap, Layers, Radio, SlidersHorizontal, Sparkles, Target,
+  GraduationCap, Handshake, Layers, Radio, SlidersHorizontal, Sparkles, Target,
   TrendingUp, Zap
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -156,6 +156,7 @@ export default function DashboardPage() {
   const [careers, setCareers] = useState([]);
   const [evidence, setEvidence] = useState([]);
   const [timeline, setTimeline] = useState([]);
+  const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('actual');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -167,11 +168,15 @@ export default function DashboardPage() {
 
     async function load() {
       await ensureIconicProject2026Seed(profile);
-      const [aRes, cRes, eRes, tRes] = await Promise.all([
+      const [aRes, cRes, eRes, tRes, mRes] = await Promise.all([
         supabase.from('activities').select('*, careers(name, code), objectives(title)'),
         supabase.from('careers').select('*').eq('active', true),
         supabase.from('evidence').select('id, activity_id'),
         supabase.from('timeline_events').select('*').order('event_date', { ascending: false }).limit(8),
+        supabase
+          .from('meetings')
+          .select('id, title, meeting_date, documentation_level, meeting_participants(id), meeting_agreements(id, status)')
+          .order('meeting_date', { ascending: false }),
       ]);
 
       if (cancelled) return;
@@ -179,6 +184,7 @@ export default function DashboardPage() {
       setCareers(cRes.data || []);
       setEvidence(eRes.data || []);
       setTimeline(tRes.data || []);
+      setMeetings(mRes.data || []);
       setLoading(false);
     }
 
@@ -209,6 +215,11 @@ export default function DashboardPage() {
     activity.status !== 'pendiente' && !evidence.some(item => item.activity_id === activity.id)
   );
   const withIndicators = stageFiltered.filter(activity => getActivityMetadata(activity).indicators?.length > 0).length;
+  const pendingMeetingAgreements = meetings.reduce(
+    (total, meeting) => total + (meeting.meeting_agreements || [])
+      .filter(agreement => agreement.status === 'pendiente_confirmacion').length,
+    0
+  );
   const upcomingClose = stageFiltered.filter(activity => {
     const { endMonth } = getActivityWindow(activity);
     return endMonth >= selectedMonth && endMonth <= selectedMonth + 1 && activity.status !== 'finalizado';
@@ -269,6 +280,7 @@ export default function DashboardPage() {
       noEvidence,
       withIndicators,
       upcomingClose,
+      meetings,
     });
   }
 
@@ -293,6 +305,9 @@ export default function DashboardPage() {
             </button>
             <Link to="/actividades" className="btn btn-glass">
               <ClipboardList size={15} /> Actividades
+            </Link>
+            <Link to="/reuniones" className="btn btn-glass">
+              <Handshake size={15} /> Reuniones
             </Link>
             <Link to="/reportes" className="btn btn-glass">
               <FileText size={15} /> Reportes
@@ -380,6 +395,11 @@ export default function DashboardPage() {
           <GraduationCap size={18} />
           <strong>{careerData.length}</strong>
           <span>carreras activas</span>
+        </div>
+        <div className="metric-tile">
+          <Handshake size={18} />
+          <strong>{meetings.length}</strong>
+          <span>{pendingMeetingAgreements} acuerdos por confirmar</span>
         </div>
       </section>
 
@@ -589,6 +609,7 @@ export default function DashboardPage() {
           <div className="signal-list">
             {noEvidence.length > 0 && <span><AlertTriangle size={14} /> {noEvidence.length} actividad(es) sin evidencia</span>}
             {upcomingClose.length > 0 && <span><CalendarClock size={14} /> {upcomingClose.length} cierre(s) cercanos</span>}
+            {pendingMeetingAgreements > 0 && <span><Handshake size={14} /> {pendingMeetingAgreements} acuerdo(s) de reuniones por confirmar</span>}
             {timeline.slice(0, 4).map(item => (
               <span key={item.id}><CheckCircle2 size={14} /> {formatDateOnly(item.event_date, { day: 'numeric', month: 'short' })}: {item.title}</span>
             ))}
@@ -834,7 +855,7 @@ export default function DashboardPage() {
           margin-bottom: var(--space-lg);
         }
         .kpi-strip {
-          grid-template-columns: repeat(6, minmax(140px, 1fr));
+          grid-template-columns: repeat(7, minmax(128px, 1fr));
         }
         .metric-tile {
           position: relative;

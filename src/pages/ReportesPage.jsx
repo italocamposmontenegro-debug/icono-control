@@ -21,6 +21,7 @@ export default function ReportesPage() {
   const [careers, setCareers] = useState([]);
   const [objectives, setObjectives] = useState([]);
   const [evidence, setEvidence] = useState([]);
+  const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCareer, setFilterCareer] = useState('');
@@ -39,7 +40,7 @@ export default function ReportesPage() {
 
     async function load() {
       await ensureIconicProject2026Seed(profile);
-      const [aRes, cRes, oRes, eRes] = await Promise.all([
+      const [aRes, cRes, oRes, eRes, mRes] = await Promise.all([
         supabase
           .from('activities')
           .select('*, careers(name, code), objectives(title), profiles!activities_responsible_profile_id_fkey(full_name,email)')
@@ -47,6 +48,10 @@ export default function ReportesPage() {
         supabase.from('careers').select('*').eq('active',true).order('name'),
         supabase.from('objectives').select('*').eq('active',true).order('order_index'),
         supabase.from('evidence').select('id, activity_id'),
+        supabase
+          .from('meetings')
+          .select('id, title, meeting_date, documentation_level, meeting_participants(id), meeting_agreements(id, status)')
+          .order('meeting_date', { ascending: false }),
       ]);
 
       if (cancelled) return;
@@ -54,6 +59,7 @@ export default function ReportesPage() {
       setCareers(cRes.data || []);
       setObjectives(oRes.data || []);
       setEvidence(eRes.data || []);
+      setMeetings(mRes.data || []);
       setLoading(false);
     }
     load();
@@ -115,6 +121,7 @@ export default function ReportesPage() {
       noEvidence,
       withIndicators,
       upcomingClose,
+      meetings,
     });
   };
 
@@ -146,6 +153,7 @@ export default function ReportesPage() {
           <span><strong>{averageProgress}%</strong> avance</span>
           <span><strong>{noEvidence.length}</strong> evidencias pendientes</span>
           <span><strong>{withIndicators}</strong> con indicadores</span>
+          <span><strong>{meetings.length}</strong> reuniones registradas</span>
         </div>
         <FileText size={54} className="report-focus-icon" />
       </div>

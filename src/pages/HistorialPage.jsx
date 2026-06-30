@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Clock, ArrowRight } from 'lucide-react';
 import { isLegacyActivity } from '../data/iconicProject2026';
@@ -97,7 +98,11 @@ export default function HistorialPage() {
                   <div style={{fontSize:'0.8rem',fontWeight:700,color:'var(--color-accent)'}}>
                     {new Date(t.event_date).toLocaleDateString('es-CL',{day:'numeric',month:'long',year:'numeric'})}
                   </div>
-                  <div style={{fontSize:'0.95rem',fontWeight:600,marginTop:2}}>{t.title}</div>
+                  <div style={{fontSize:'0.95rem',fontWeight:600,marginTop:2}}>
+                    {t.related_meeting_id
+                      ? <Link to={`/reuniones/${t.related_meeting_id}`}>{t.title}</Link>
+                      : t.title}
+                  </div>
                   {t.description && <div style={{fontSize:'0.85rem',color:'var(--color-text-secondary)',marginTop:2}}>{t.description}</div>}
                   {t.careers && <span className="badge" style={{background:'var(--color-surface-alt)',marginTop:4}}>{t.careers.name}</span>}
                 </div>

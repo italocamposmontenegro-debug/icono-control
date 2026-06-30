@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   LayoutDashboard, ClipboardList, CalendarRange, FileImage,
   Clock, BarChart3, GraduationCap, Users, LogOut, ChevronLeft,
-  Menu, Shield
+  Handshake, Menu, Shield
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
   { to: '/actividades', label: 'Actividades', icon: ClipboardList, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
   { to: '/cronograma', label: 'Cronograma', icon: CalendarRange, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
+  { to: '/reuniones', label: 'Reuniones', icon: Handshake, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
   { to: '/evidencias', label: 'Evidencias', icon: FileImage, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
   { to: '/historial', label: 'Historial', icon: Clock, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
   { to: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['admin_comite', 'responsable_carrera', 'visualizador'] },
