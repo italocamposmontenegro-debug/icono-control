@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft, CalendarDays, CheckCircle2, ClipboardCheck, Clock3,
-  FileText, Mail, MapPin, ShieldCheck, Users, Video
+  FileText, Mail, MapPin, Pencil, ShieldCheck, Users, Video
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatDateOnly } from '../utils/date';
+import { useAuth } from '../contexts/AuthContext';
 
 const PARTICIPATION_LABELS = {
   organizador: 'Organizador/a',
@@ -42,6 +43,7 @@ function formatTime(value) {
 
 export default function MeetingDetailPage() {
   const { id } = useParams();
+  const { profile } = useAuth();
   const [meeting, setMeeting] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [agreements, setAgreements] = useState([]);
@@ -99,7 +101,14 @@ export default function MeetingDetailPage() {
 
   return (
     <div className="page-content meeting-detail-page">
-      <Link to="/reuniones" className="meeting-back"><ArrowLeft size={15} /> Volver a reuniones</Link>
+      <div className="meeting-detail-actions">
+        <Link to="/reuniones" className="meeting-back"><ArrowLeft size={15} /> Volver a reuniones</Link>
+        {profile?.role === 'admin_comite' && (
+          <Link to={`/reuniones/${id}/editar`} className="btn btn-primary btn-sm">
+            <Pencil size={14} /> Editar información
+          </Link>
+        )}
+      </div>
 
       <section className="meeting-detail-hero">
         <div>
@@ -240,10 +249,16 @@ export default function MeetingDetailPage() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          margin-bottom: var(--space-md);
           color: var(--color-text-secondary);
           font-size: 0.82rem;
           font-weight: 750;
+        }
+        .meeting-detail-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: var(--space-md);
         }
         .meeting-detail-hero {
           display: grid;

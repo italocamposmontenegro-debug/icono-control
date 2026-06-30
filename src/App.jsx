@@ -12,6 +12,7 @@ import HistorialPage from './pages/HistorialPage';
 import ReportesPage from './pages/ReportesPage';
 import MeetingsPage from './pages/MeetingsPage';
 import MeetingDetailPage from './pages/MeetingDetailPage';
+import MeetingFormPage from './pages/MeetingFormPage';
 import CarrerasPage from './pages/CarrerasPage';
 import UsuariosPage from './pages/UsuariosPage';
 import { Loader } from 'lucide-react';
@@ -54,6 +55,9 @@ function App() {
             <Route path="cronograma" element={<CronogramaPage />} />
             <Route path="reuniones" element={<MeetingsPage />} />
             <Route path="reuniones/:id" element={<MeetingDetailPage />} />
+            <Route path="reuniones/:id/editar" element={
+              <ProtectedRoute adminOnly><MeetingFormPage /></ProtectedRoute>
+            } />
             <Route path="evidencias" element={<EvidenciasPage />} />
             <Route path="historial" element={<HistorialPage />} />
             <Route path="reportes" element={<ReportesPage />} />
